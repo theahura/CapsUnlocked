@@ -1,3 +1,5 @@
+#Requires AutoHotkey v2.0
+
 ;=======================================================================================================================
 ; CAPS-UNLOCKED
 ;=======================================================================================================================
@@ -7,37 +9,40 @@
 ;  * Use CapsLock as LControl when used in conjunction with some other key or if it's held longer than 300ms
 ;  * Toggle CapsLock by pressing LControl+CapsLock
 
-#InstallKeybdHook
-SetCapsLockState, alwaysoff
+SetCapsLockState "Off"
 StartTime := 0
-*Capslock::
-if (GetKeyState("LControl", "P")) {
-  KeyWait, CapsLock
-  Send {CapsLock Down}
-  return
-}
+Capslock::
+{
+    ; Declare global variables
+    global StartTime, A_PriorKey
 
-Send {LControl Down}
-State := (GetKeyState("Alt", "P") || GetKeyState("Shift", "P") || GetKeyState("LWin", "P") || GetKeyState("RWin", "P"))
-if (  !State
-   && (StartTime = 0)) {
-  StartTime := A_TickCount
-}
+    if GetKeyState("LControl", "P") {
+        KeyWait("CapsLock")
+        Send("{CapsLock Down}")
+        return
+    }
 
-KeyWait, CapsLock
-Send {LControl Up}
-IniRead, condEscape, %A_ScriptDir%\Settings.ini, CapsUnlocked, TapEscape, 1
-if (  State
-   || !condEscape) {
-   return
-}
+    Send("{LControl Down}")
+    State := (GetKeyState("Alt", "P") || GetKeyState("Shift", "P") || GetKeyState("LWin", "P") || GetKeyState("RWin", "P"))
+    if (!State && StartTime = 0) {
+        StartTime := A_TickCount
+    }
 
-elapsedTime := A_TickCount - StartTime
-IniRead, timeout,    %A_ScriptDir%\Settings.ini, CapsUnlocked, Timeout, 300
-if (  (A_PriorKey = "CapsLock")
-   && (A_TickCount - StartTime < timeout)) {
-  Send {Esc}
-}
+    KeyWait("CapsLock")
+    Send("{LControl Up}")
+    
+    ; Read settings from INI file
+    condEscape := IniRead(A_ScriptDir "\Settings.ini", "CapsUnlocked", "TapEscape", 1)
+    if (State || !condEscape) {
+        return
+    }
 
-StartTime := 0
-return
+    elapsedTime := A_TickCount - StartTime
+    timeout := IniRead(A_ScriptDir "\Settings.ini", "CapsUnlocked", "Timeout", 300)
+    if (A_PriorKey = "CapsLock" && elapsedTime < timeout) {
+        Send("{Esc}")
+    }
+
+    StartTime := 0
+    return
+}
